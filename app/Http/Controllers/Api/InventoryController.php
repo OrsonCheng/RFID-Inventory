@@ -22,12 +22,11 @@ class InventoryController extends Controller
             ->paginate(15);
     }
 
-    // 創建盤點工單 (核心)
+    // 創建盤點工單
     public function store(Request $request)
     {
         $request->validate([
             'responsible_user_id' => 'required|exists:users,id',
-            // 'auditor_user_id' => 'required|exists:users,id', // 盤點人可以稍後指派
         ]);
 
         $responsibleUser = User::findOrFail($request->input('responsible_user_id'));
@@ -46,16 +45,17 @@ class InventoryController extends Controller
             $workOrder = InventoryWorkOrder::create([
                 'title' => Carbon::now()->toDateString() . ' - ' . $responsibleUser->name . ' 的盤點工單',
                 'responsible_user_id' => $responsibleUser->id,
-                'auditor_user_id' => $request->input('auditor_user_id'), // 可選
-                'status' => 'pending',
+                'auditor_user_id' => $request->input('auditor_user_id'),
+                'status' => 'pending', // 初始狀態
             ]);
 
-            // 3. 創建工單明細 (所有資產預設為 "未盤")
+            // 3. 創建工單明細
             $items = $assetsToInventory->map(function ($asset) use ($workOrder) {
                 return [
                     'work_order_id' => $workOrder->id,
                     'fixed_asset_id' => $asset->id,
                     'status' => '未盤',
+                    'scanned_at' => null,
                 ];
             });
 
@@ -65,19 +65,19 @@ class InventoryController extends Controller
         });
     }
 
-    // 獲取單張工單詳情 (含所有明細)
+    // 獲取單張工單詳情
     public function show($id)
     {
         $workOrder = InventoryWorkOrder::with(
             'responsibleUser',
             'auditorUser',
-            'items.fixedAsset' //  eager load 資產資訊
+            'items.fixedAsset'
         )->findOrFail($id);
         
         return response()->json($workOrder);
     }
 
-    // 執行掃描 (核心)
+    // 執行掃描 (核心邏輯修改)
     public function scan(Request $request, $id)
     {
         $request->validate([
@@ -94,7 +94,7 @@ class InventoryController extends Controller
             return response()->json(['message' => '錯誤：找不到對應此 RFID 的資產。', 'scanned_rfid' => $rfidTag], 404);
         }
 
-        // 2. 在 *當前工單* 中查找該資產明細
+        // 2. 在當前工單中查找該資產明細
         $item = $workOrder->items()
                          ->where('fixed_asset_id', $asset->id)
                          ->first();
@@ -104,7 +104,7 @@ class InventoryController extends Controller
                 'message' => '錯誤：此資產 ('.$asset->name.') 不屬於當前盤點工單。',
                 'asset_name' => $asset->name,
                 'asset_tag' => $asset->asset_tag
-            ], 422); // 422 Unprocessable Entity
+            ], 422);
         }
 
         // 3. 更新狀態為 "已盤"
@@ -114,7 +114,26 @@ class InventoryController extends Controller
             $item->save();
         }
 
-        // 4. 返回更新後的項目 (包含資產資訊)
+        // ==========================================
+        // ▼▼▼ 新增邏輯：自動更新工單狀態 ▼▼▼
+        // ==========================================
+        
+        // 檢查是否還有 "未盤" 的項目
+        $remainingCount = $workOrder->items()->where('status', '未盤')->count();
+
+        if ($remainingCount === 0) {
+            // 如果沒有未盤項目，標記工單為完成
+            if ($workOrder->status !== 'completed') {
+                $workOrder->update(['status' => 'completed']);
+            }
+        } else {
+            // 如果還有未盤項目，但工單還是 pending，改為進行中 (in_progress)
+            if ($workOrder->status === 'pending') {
+                $workOrder->update(['status' => 'in_progress']);
+            }
+        }
+
+        // 4. 返回更新後的項目
         return response()->json($item->load('fixedAsset'));
     }
 }
