@@ -13,27 +13,28 @@
         <button @click="openAddModal" class="btn-primary shadow-lg shadow-indigo-100">
           <Plus class="w-4 h-4" /> 新增資產
         </button>
-        <!-- 預留功能按鈕 -->
         <button class="btn-secondary" title="匯出功能(開發中)">
           <Download class="w-4 h-4" /> 匯出列表
         </button>
       </div>
     </div>
 
-    <!-- 2. 統計摘要卡片 (Dashboard Widgets) -->
+    <!-- 2. 統計摘要卡片 -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <!-- 這裡的數字我們暫時用 pagination.total (真實總數) 來顯示，而不是只抓當前頁面的數量 -->
       <div class="stat-card border-l-4 border-indigo-500">
         <div class="text-slate-500 text-xs font-medium uppercase">資產總數</div>
-        <div class="text-2xl font-bold text-slate-800 mt-1">{{ assets.length }}</div>
+        <div class="text-2xl font-bold text-slate-800 mt-1">{{ pagination.total }}</div>
       </div>
+      <!-- 以下兩個數字因為後端沒回傳統計，暫時只能顯示當前頁面的統計，或需要另外一支 API -->
       <div class="stat-card border-l-4 border-emerald-500">
-        <div class="text-slate-500 text-xs font-medium uppercase">RFID 已綁定</div>
+        <div class="text-slate-500 text-xs font-medium uppercase">本頁已綁定</div>
         <div class="text-2xl font-bold text-emerald-700 mt-1">
             {{ assets.filter(a => a.rfid_tag).length }}
         </div>
       </div>
       <div class="stat-card border-l-4 border-amber-500">
-        <div class="text-slate-500 text-xs font-medium uppercase">未綁定 / 異常</div>
+        <div class="text-slate-500 text-xs font-medium uppercase">本頁未綁定</div>
         <div class="text-2xl font-bold text-amber-700 mt-1">
             {{ assets.filter(a => !a.rfid_tag).length }}
         </div>
@@ -41,20 +42,31 @@
     </div>
 
     <!-- 3. 搜尋與過濾區塊 -->
-    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex gap-4">
-      <div class="relative flex-1 max-w-lg">
+    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row gap-4">
+      <!-- 關鍵字搜尋 -->
+      <div class="relative flex-1">
         <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
         <input 
           v-model="searchQuery" 
-          @input="fetchAssets"
+          @input="() => fetchAssets(1)" 
           type="text" 
           placeholder="輸入資產名稱、固資編號或 RFID 進行搜尋..." 
           class="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
         >
       </div>
-      <div class="flex items-center gap-2 text-sm text-slate-500 ml-auto">
-        <Filter class="w-4 h-4" /> 
-        <span>顯示 {{ assets.length }} 筆資料</span>
+
+      <!-- 保管人篩選 -->
+      <div class="w-full md:w-64 relative">
+        <User class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+        <select 
+            v-model="filterUser" 
+            @change="() => fetchAssets(1)"
+            class="w-full pl-10 pr-8 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none appearance-none bg-white text-slate-700 cursor-pointer"
+        >
+            <option value="">所有保管人</option>
+            <option v-for="u in users" :key="u.id" :value="u.id">{{ u.name }}</option>
+        </select>
+        <ChevronDown class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4 pointer-events-none" />
       </div>
     </div>
 
@@ -127,14 +139,70 @@
           </tbody>
         </table>
       </div>
+
+      <!-- ★★★ 分頁控制器 (New) ★★★ -->
+      <div class="px-4 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between sm:px-6">
+        <!-- 手機版簡易分頁 -->
+        <div class="flex 1 justify-between sm:hidden w-full">
+            <button 
+                @click="changePage(pagination.current_page - 1)" 
+                :disabled="pagination.current_page <= 1"
+                class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+            >
+                上一頁
+            </button>
+            <button 
+                @click="changePage(pagination.current_page + 1)" 
+                :disabled="pagination.current_page >= pagination.last_page"
+                class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+            >
+                下一頁
+            </button>
+        </div>
+
+        <!-- 電腦版完整分頁 -->
+        <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+            <div>
+                <p class="text-sm text-slate-500">
+                    顯示第 <span class="font-medium text-slate-900">{{ pagination.from }}</span>
+                    到 <span class="font-medium text-slate-900">{{ pagination.to }}</span> 筆，
+                    共 <span class="font-medium text-slate-900">{{ pagination.total }}</span> 筆
+                </p>
+            </div>
+            <div>
+                <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                    <button 
+                        @click="changePage(pagination.current_page - 1)"
+                        :disabled="pagination.current_page <= 1"
+                        class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-slate-300 bg-white text-sm font-medium text-slate-500 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        <span class="sr-only">Previous</span>
+                        <ChevronLeft class="h-5 w-5" />
+                    </button>
+                    
+                    <!-- 頁碼顯示 (簡易版：只顯示當前頁) -->
+                    <span class="relative inline-flex items-center px-4 py-2 border border-slate-300 bg-white text-sm font-medium text-slate-700">
+                        第 {{ pagination.current_page }} 頁 / 共 {{ pagination.last_page }} 頁
+                    </span>
+
+                    <button 
+                        @click="changePage(pagination.current_page + 1)"
+                        :disabled="pagination.current_page >= pagination.last_page"
+                        class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-slate-300 bg-white text-sm font-medium text-slate-500 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        <span class="sr-only">Next</span>
+                        <ChevronRight class="h-5 w-5" />
+                    </button>
+                </nav>
+            </div>
+        </div>
+      </div>
     </div>
 
     <!-- 5. 新增/編輯 Modal -->
     <div v-if="showAddModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <!-- Backdrop -->
+        <!-- ... Modal 內容保持不變 ... -->
         <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" @click="closeModal"></div>
-        
-        <!-- Content -->
         <div class="relative bg-white w-full max-w-lg rounded-2xl shadow-2xl p-6 transform transition-all scale-100">
             <div class="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
                 <h2 class="text-xl font-bold text-slate-800">
@@ -160,7 +228,6 @@
                             <ScanLine class="w-3 h-3 text-indigo-500" /> RFID 標籤 ID
                         </label>
                         <input v-model="form.rfid_tag" type="text" class="input-field bg-indigo-50/50 border-indigo-200 focus:ring-indigo-200" placeholder="請使用掃描槍輸入...">
-                        <p class="text-xs text-slate-400 mt-1">將游標置於此處並掃描標籤即可綁定</p>
                     </div>
                     <div>
                         <label class="label">保管人 <span class="text-rose-500">*</span></label>
@@ -200,7 +267,8 @@ import { ref, onMounted, reactive } from 'vue';
 import axios from 'axios';
 import { 
     Package, Plus, Download, Search, Filter, Wifi, WifiOff, 
-    Edit3, Inbox, MapPin, ScanLine, X 
+    Edit3, Inbox, MapPin, ScanLine, X, User, ChevronDown, 
+    ChevronLeft, ChevronRight // 新增分頁圖標
 } from 'lucide-vue-next';
 
 // State
@@ -210,6 +278,17 @@ const loading = ref(false);
 const showAddModal = ref(false);
 const isEditMode = ref(false);
 const searchQuery = ref('');
+const filterUser = ref('');
+
+// ★★★ 分頁狀態 ★★★
+const pagination = reactive({
+    current_page: 1,
+    last_page: 1,
+    total: 0,
+    from: 0,
+    to: 0,
+    per_page: 50
+});
 
 // Form Data
 const defaultForm = { 
@@ -224,15 +303,38 @@ const defaultForm = {
 const form = reactive({ ...defaultForm });
 
 // API Calls
-const fetchAssets = async () => { 
+// ★★★ 修改 fetchAssets 支援 page 參數 ★★★
+const fetchAssets = async (page = 1) => { 
     loading.value = true;
     try {
-        const res = await axios.get('/api/assets', { params: { search: searchQuery.value } }); 
+        const res = await axios.get('/api/assets', { 
+            params: { 
+                search: searchQuery.value,
+                user_id: filterUser.value,
+                page: page // 傳遞頁碼給後端
+            } 
+        }); 
+        
         assets.value = res.data.data; 
+        
+        // 更新分頁資訊 (Laravel 預設格式)
+        pagination.current_page = res.data.current_page;
+        pagination.last_page = res.data.last_page;
+        pagination.total = res.data.total;
+        pagination.from = res.data.from;
+        pagination.to = res.data.to;
+        pagination.per_page = res.data.per_page;
+
     } catch(e) {
         console.error(e);
     } finally {
         loading.value = false;
+    }
+};
+
+const changePage = (page) => {
+    if (page >= 1 && page <= pagination.last_page) {
+        fetchAssets(page);
     }
 };
 
@@ -250,7 +352,6 @@ const openAddModal = () => {
 
 const editAsset = (asset) => {
     isEditMode.value = true;
-    // Copy data to form
     Object.assign(form, {
         id: asset.id,
         asset_tag: asset.asset_tag,
@@ -265,7 +366,6 @@ const editAsset = (asset) => {
 
 const closeModal = () => {
     showAddModal.value = false;
-    // Slight delay to clear form after animation
     setTimeout(() => Object.assign(form, defaultForm), 200);
 };
 
@@ -277,14 +377,13 @@ const save = async () => {
         }
 
         if (isEditMode.value) {
-            // Update
             await axios.put(`/api/assets/${form.id}`, form);
         } else {
-            // Create
             await axios.post('/api/assets', form);
         }
         
-        await fetchAssets(); 
+        // 儲存後重新整理當前頁面
+        await fetchAssets(pagination.current_page); 
         closeModal();
     } catch(e) {
         const msg = e.response?.data?.message || '儲存失敗，請檢查固資編號是否重複';
@@ -292,7 +391,6 @@ const save = async () => {
     }
 };
 
-// Helper
 const statusBadgeClass = (status) => {
   switch(status) {
     case '使用中': return 'badge-blue';
@@ -310,24 +408,11 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* Component Classes */
-.btn-primary {
-  @apply bg-indigo-600 text-white px-4 py-2.5 rounded-lg hover:bg-indigo-700 transition-all flex items-center gap-2 font-medium active:scale-95;
-}
-.btn-secondary {
-  @apply bg-white text-slate-600 border border-slate-200 px-4 py-2.5 rounded-lg hover:bg-slate-50 hover:text-slate-800 transition-colors flex items-center gap-2 font-medium;
-}
-.stat-card {
-  @apply bg-white p-5 rounded-xl shadow-sm border-slate-200;
-}
-.input-field {
-  @apply w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all text-slate-700 text-sm;
-}
-.label {
-  @apply block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wide;
-}
-
-/* Badges */
+.btn-primary { @apply bg-indigo-600 text-white px-4 py-2.5 rounded-lg hover:bg-indigo-700 transition-all flex items-center gap-2 font-medium active:scale-95; }
+.btn-secondary { @apply bg-white text-slate-600 border border-slate-200 px-4 py-2.5 rounded-lg hover:bg-slate-50 hover:text-slate-800 transition-colors flex items-center gap-2 font-medium; }
+.stat-card { @apply bg-white p-5 rounded-xl shadow-sm border-slate-200; }
+.input-field { @apply w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all text-slate-700 text-sm; }
+.label { @apply block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wide; }
 .badge-success { @apply px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-50 text-emerald-600 border border-emerald-100; }
 .badge-blue    { @apply px-2.5 py-1 rounded-md text-xs font-bold bg-blue-50 text-blue-600 border border-blue-100; }
 .badge-yellow  { @apply px-2.5 py-1 rounded-md text-xs font-bold bg-amber-50 text-amber-600 border border-amber-100; }

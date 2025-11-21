@@ -9,21 +9,32 @@ use Illuminate\Support\Facades\Validator;
 
 class FixedAssetController extends Controller
 {
-    // 獲取資產列表 (可帶查詢)
+    // 獲取資產列表 (支援搜尋與篩選)
     public function index(Request $request)
     {
-        $query = FixedAsset::with('responsibleUser');
+        // 預設載入關聯並按時間倒序
+        $query = FixedAsset::with('responsibleUser')->orderBy('created_at', 'desc');
 
-        if ($request->has('search')) {
+        // 1. 關鍵字搜尋 (支援：資產名稱、編號、RFID、**保管人姓名**)
+        if ($request->has('search') && $request->search) {
             $search = $request->input('search');
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                   ->orWhere('asset_tag', 'like', "%{$search}%")
-                  ->orWhere('rfid_tag', 'like', "%{$search}%");
+                  ->orWhere('rfid_tag', 'like', "%{$search}%")
+                  // 新增：關聯搜尋保管人姓名
+                  ->orWhereHas('responsibleUser', function($q2) use ($search) {
+                      $q2->where('name', 'like', "%{$search}%");
+                  });
             });
         }
+
+        // 2. 特定保管人篩選 (下拉選單專用)
+        if ($request->has('user_id') && $request->user_id) {
+            $query->where('responsible_user_id', $request->user_id);
+        }
         
-        return $query->paginate(20);
+        return $query->paginate(50); // 每頁顯示 50 筆
     }
 
     // 創建單筆資產
@@ -35,7 +46,6 @@ class FixedAssetController extends Controller
             'name' => 'required|string|max:255',
             'responsible_user_id' => 'required|exists:users,id',
             'status' => 'required|string',
-            // ... 其他欄位驗證
         ]);
 
         if ($validator->fails()) {
@@ -52,7 +62,7 @@ class FixedAssetController extends Controller
         return FixedAsset::with('responsibleUser')->findOrFail($id);
     }
 
-    // 更新資產 (核心：用於綁定 RFID)
+    // 更新資產
     public function update(Request $request, $id)
     {
         $asset = FixedAsset::findOrFail($id);
@@ -62,7 +72,6 @@ class FixedAssetController extends Controller
             'rfid_tag' => 'nullable|string|unique:fixed_assets,rfid_tag,' . $asset->id,
             'name' => 'required|string|max:255',
             'responsible_user_id' => 'required|exists:users,id',
-            // ...
         ]);
 
         if ($validator->fails()) {
@@ -73,47 +82,16 @@ class FixedAssetController extends Controller
         return response()->json($asset->load('responsibleUser'));
     }
 
-    // 批量導入
+    // 批量導入 (預留)
     public function batchImport(Request $request)
     {
-        // 驗證上傳的檔案 (例如 CSV)
         $request->validate([
             'file' => 'required|file|mimes:csv,txt,xlsx'
         ]);
-
-        // *** 強烈建議 ***
-        // 這裡的導入邏輯應使用 Laravel Queues (隊列) 在後台執行
-        // 為了演示，這裡先用同步處理
-        
-        // (省略 CSV 解析邏輯)
-        // 假設 $data 是一個從 CSV 解析來的陣列：
-        // $data = [
-        //   ['asset_tag' => 'F-001', 'name' => '電腦A', 'responsible_user_email' => 'user@a.com'],
-        //   ['asset_tag' => 'F-002', 'name' => '電腦B', 'responsible_user_email' => 'user@b.com'],
-        // ]
-
-        // $importedCount = 0;
-        // foreach ($data as $row) {
-        //    $user = User::where('email', $row['responsible_user_email'])->first();
-        //    if ($user) {
-        //        FixedAsset::updateOrCreate(
-        //            ['asset_tag' => $row['asset_tag']],
-        //            [
-        //                'name' => $row['name'],
-        //                'responsible_user_id' => $user->id,
-        //                // ... 其他欄位
-        //            ]
-        //        );
-        //        $importedCount++;
-        //    }
-        // }
-        // return response()->json(['message' => "成功導入 {$importedCount} 筆資料"]);
-        
-        // 提示：請實作導入邏輯
-        return response()->json(['message' => '批量導入 API 已收到，請實作後續 CSV 解析與隊列處理邏輯。'], 501);
+        return response()->json(['message' => '批量導入功能尚未實作'], 501);
     }
 
-    // 刪除資產 (可選)
+    // 刪除資產
     public function destroy(FixedAsset $asset)
     {
         $asset->delete();
