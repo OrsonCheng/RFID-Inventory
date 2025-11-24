@@ -34,5 +34,12 @@ return [
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
     ],
+	
+	'laravelpassport' => [
+        'client_id' => env('TE_SSO_CLIENT_ID'),
+        'client_secret' => env('TE_SSO_CLIENT_SECRET'),
+        'redirect' => env('TE_SSO_REDIRECT_URI'),
+        'host' => env('TE_SSO_HOST'), // Auth Center 的網址
+    ],
 
 ];
