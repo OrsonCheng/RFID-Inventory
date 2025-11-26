@@ -16,6 +16,8 @@ class InventoryWorkOrderItem extends Model
         'fixed_asset_id',
         'status',
         'scanned_at',
+        'scanner_user_id',
+		'note',
     ];
 
     protected $casts = [
@@ -36,5 +38,13 @@ class InventoryWorkOrderItem extends Model
     public function fixedAsset()
     {
         return $this->belongsTo(FixedAsset::class, 'fixed_asset_id');
+    }
+
+    /**
+     * 新增：關聯到實際掃描人
+     */
+    public function scanner()
+    {
+        return $this->belongsTo(User::class, 'scanner_user_id');
     }
 }

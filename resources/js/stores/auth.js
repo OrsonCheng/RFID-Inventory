@@ -12,7 +12,25 @@ export const useAuthStore = defineStore('auth', {
 
     getters: {
         isAuthenticated: (state) => !!state.token,
-        isAdmin: (state) => state.user?.roles && state.user.roles.includes('admin'),
+        
+        // 判斷是否為 Admin
+        isAdmin: (state) => {
+            return state.user?.roles?.includes('admin') || false;
+        },
+
+        // ★★★ UI 判斷邏輯 ★★★
+        
+        // 1. 是否能管理資產 (顯示新增、編輯、導入按鈕)
+        canManageAssets: (state) => {
+            if (!state.user || !state.user.roles) return false;
+            return state.user.roles.includes('admin') || state.user.roles.includes('senior_staff');
+        },
+
+        // 2. 是否能生成工單 (顯示生成按鈕)
+        canCreateOrder: (state) => {
+            if (!state.user || !state.user.roles) return false;
+            return state.user.roles.includes('admin') || state.user.roles.includes('senior_staff');
+        }
     },
 
     actions: {

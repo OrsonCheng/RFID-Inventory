@@ -34,6 +34,31 @@ Route::middleware('auth:sanctum')->group(function () {
 	Route::post('inventory/work-orders', [InventoryController::class, 'store']); // 創建工單
 	Route::get('inventory/work-orders/{id}', [InventoryController::class, 'show']);
 	Route::post('inventory/work-orders/{id}/scan', [InventoryController::class, 'scan']); // 核心：掃描 RFID
+	// 在 inventory routes 區域加入：
+	Route::post('inventory/work-orders/{id}/batch-scan', [InventoryController::class, 'batchScan']);
+	//申報盤虧 (新增)
+    Route::post('inventory/work-orders/{id}/report-missing', [InventoryController::class, 'reportMissing']);
+    
+    //撤銷盤虧 (新增)
+    Route::post('inventory/work-orders/{id}/revert-missing', [InventoryController::class, 'revertMissing']);
+    //取得稽核日誌 (新增)
+    Route::get('inventory/work-orders/{id}/logs', [InventoryController::class, 'logs']);
+	
+	
+	 // ★★★ 修改這段：獲取使用者資料時，順便載入角色與權限 ★★★
+    Route::get('/user', function (Illuminate\Http\Request $request) {
+        $user = $request->user();
+        
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            // 讓前端可以讀取 roles 陣列 (例如 ['admin'])
+            'roles' => $user->getRoleNames(), 
+            // 讓前端可以讀取 permissions 陣列 (例如 ['manage assets', 'scan items'])
+            'permissions' => $user->getAllPermissions()->pluck('name'),
+        ];
+    });
 });
 
 // SSO 登出 (API)
