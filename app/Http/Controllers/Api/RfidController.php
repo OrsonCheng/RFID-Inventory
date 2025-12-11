@@ -102,6 +102,8 @@ class RfidController extends Controller
 
         // 3. 更新資料
         $asset->remark = $request->custom_number;
+		// ★★★ 新增這行：只要重新綁定，就清空驗證時間，視為「未驗證」 ★★★
+        $asset->verified_at = null;
         $asset->save(); // 觸發 Observer 清除 Cache
 
         // 4. 回傳成功
@@ -135,6 +137,10 @@ class RfidController extends Controller
 
         // 3. 判斷結果
         if ($asset) {
+			// ★★★ 新增這行：記錄驗證時間 ★★★
+            $asset->verified_at = now();
+            $asset->save();
+			
             return response()->json([
                 'status' => 'success',
                 'message' => '驗證通過',
