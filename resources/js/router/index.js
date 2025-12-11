@@ -47,7 +47,9 @@ const routes = [
 ];
 
 const router = createRouter({
-    history: createWebHistory(),
+    // ⬇️ 修改這裡：使用三元運算子自動判斷
+    // 如果是生產環境(打包)，使用 '/rfid-inventory/'，否則(本地開發)使用 '/'
+    history: createWebHistory(import.meta.env.MODE === 'production' ? '/rfid-inventory/' : '/'),
     routes,
 });
 

@@ -19,12 +19,8 @@ return new class extends Migration {
 			$table->foreignId('responsible_user_id')->nullable()->constrained('users')->comment('保管人/負責人 ID');
 			$table->timestamps(); // <--- 必須要有這一行！它會產生 created_at 和 updated_at
 			// 其他補充欄位 (來自 CSV)
-			//$table->string('brand')->nullable()->comment('品牌');
 			$table->string('location')->nullable()->comment('存放位置');
-			//$table->string('supplier')->nullable()->comment('供應商');
-			//$table->date('purchase_date')->nullable()->comment('獲得日期');
-			//$table->decimal('price', 10, 2)->nullable()->comment('單價');
-			// ... 您可以根據需要添加更多來自 CSV 的欄位
+			
 		});
 
         Schema::create('inventory_work_orders', function (Blueprint $table) {

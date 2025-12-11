@@ -5,7 +5,9 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\FixedAssetController;
 use App\Http\Controllers\Api\InventoryController;
 use App\Http\Controllers\Api\UserController;
-use App\Http\Controllers\Api\SSOController; // <--- 必須要有這一行！
+use App\Http\Controllers\Api\SSOController; 
+use App\Http\Controllers\AssetImportController;
+use App\Http\Controllers\Api\RfidController;
 
 /*
 | API Routes
@@ -20,6 +22,11 @@ use App\Http\Controllers\Api\SSOController; // <--- 必須要有這一行！
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
+
+/** C# 工作站使用 **/
+Route::get('/assets/rfid-lookup', [RfidController::class, 'lookup']);//輸入資產編號 找RFID
+Route::post('/assets/bind-rfid', [RfidController::class, 'bind']);//綁定 rfid 與 自定義編號
+Route::post('/assets/verify', [RfidController::class, 'verify']);//驗證rfid 與 自定義編號一致
 
 Route::middleware('auth:sanctum')->group(function () {
 	// 1. 資產管理 (綁定 RFID, 導入)
@@ -59,6 +66,9 @@ Route::middleware('auth:sanctum')->group(function () {
             'permissions' => $user->getAllPermissions()->pluck('name'),
         ];
     });
+	
+	// 資產匯入路由
+	Route::post('/assets/import', [AssetImportController::class, 'import']);
 });
 
 // SSO 登出 (API)
@@ -84,5 +94,7 @@ Route::prefix('auth')->group(function () {
 
 // SSO 登出 (需要 auth:sanctum middleware，因為要撤銷 Token)
 Route::middleware('auth:sanctum')->post('/logout', [SSOController::class, 'logout']);
+
+
 
 

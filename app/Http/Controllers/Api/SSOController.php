@@ -41,7 +41,7 @@ class SSOController extends Controller
 
             // 如果是用戶第一次登入，自動給予基本權限 (選用)
             if ($user->roles->isEmpty()) {
-                $user->assignRole('staff'); // 假設您有 Spatie Permission
+                $user->assignRole('senior_staff'); // 假設您有 Spatie Permission
             }
 
             // 產生本地 API Token (讓前端 Vue 使用)
@@ -54,8 +54,14 @@ class SSOController extends Controller
             // 必須把 Token 帶在網址上，跳轉回 Vue 的前端接收頁面
             // Vue 頁面路徑: resources/js/Pages/AuthCallback.vue
             // 網址範例: http://127.0.0.1:8000/auth/callback?token=xxxxx
-            return redirect("http://127.0.0.1:8000/auth/callback?token={$token}");
+			// ★★★ 關鍵修正：動態讀取 .env 中的 APP_URL ★★★
+            // 讀取結果應為: http://ses.simplo.com.cn/rfid-inventory
+            $frontendUrl = config('app.url');
 
+            // 拼接回呼網址
+            // 最終結果: http://ses.simplo.com.cn/rfid-inventory/auth/callback?token=xxxxx
+            return redirect($frontendUrl . "/auth/callback?token={$token}");
+			
         } catch (\Exception $e) {
             return response()->json(['error' => 'SSO Login Failed: ' . $e->getMessage()], 500);
         }
@@ -84,8 +90,6 @@ class SSOController extends Controller
         // C. 準備 SSO Server 的登出網址
         $ssoHost = config('services.laravelpassport.host'); 
 		
-
-
         if (!$ssoHost) {
             return response()->json(['message' => 'Logged out locally', 'logout_url' => null]);
         }

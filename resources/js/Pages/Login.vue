@@ -100,6 +100,8 @@ const handleLogin = () => {
 
 // SSO 登入
 const handleSSOLogin = () => {
-    window.location.href = '/api/auth/redirect';
+    // ⬇️ 修改這裡：根據環境動態加入前綴
+    const prefix = import.meta.env.MODE === 'production' ? '/rfid-inventory' : '';
+    window.location.href = `${prefix}/api/auth/redirect`;
 };
 </script>
