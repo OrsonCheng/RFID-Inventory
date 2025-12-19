@@ -43,15 +43,24 @@ class GenerateRfidTags extends Command
         }
 
         // 全局流水號計數器 (Global Sequence Counter)
-        // 為了延續之前的編號，我們需要知道目前資料庫中已經用到哪個流水號了
-        // 如果是全新生成，從 0 開始。如果是增量生成，應該從最大值+1開始？
-        // 根據你的描述，這裡假設是「本次執行的這批資料」內部連續。
-        // 如果你需要「跨越多次執行」都連續，那需要去資料庫查最大的 RFID 流水號。
-        // 這裡我們先實作：本次執行從 0 開始 (或你可以指定起始值)
-        
-        // [修正] 為了更穩健，我們應該去查資料庫目前已有的最大流水號，避免重複
-        // 但你的需求可能是「這批資料重頭編」，我們暫時設為 0
         $sequenceCounter = 0; 
+         // 查詢目前 DB 中最大的流水號前綴 (前5碼 Hex)
+        // 使用 SUBSTR(rfid_tag, 1, 5) 截取前 5 位，並找最大值
+        $maxSeqHex = FixedAsset::whereNotNull('rfid_tag')
+            ->where('rfid_tag', '!=', '')
+            ->selectRaw('MAX(SUBSTR(rfid_tag, 1, 5)) as max_seq')
+            ->value('max_seq');
+
+        if ($maxSeqHex) {
+            // 將找到的 16 進位 (例如 "0001A") 轉為 10 進位 (26)，然後 +1 變成 27
+            $currentMaxDec = hexdec($maxSeqHex);
+            $sequenceCounter = $currentMaxDec + 1;
+
+            $this->info("偵測到既有 RFID 資料，目前最大流水號: {$maxSeqHex} (Dec: {$currentMaxDec})");
+            $this->info("本次將從流水號: " . strtoupper(dechex($sequenceCounter)) . " (Dec: {$sequenceCounter}) 開始接續生成。");
+        } else {
+            $this->info("未偵測到既有 RFID 資料，流水號將從 0 開始。");
+        }
 
         // 顯示總數
         $this->info("共找到 " . $assets->count() . " 筆資產，準備生成...");
@@ -135,20 +144,14 @@ class GenerateRfidTags extends Command
 
         $prefix = '';
         
-        // 判斷前綴
-        if (str_contains($tag, 'H-')) {
+        if(str_starts_with($tag, 'A') || str_starts_with($tag, 'C')){
+            $prefix = substr($tag, 0, 1);
+        }elseif(str_contains($tag, 'H-')) {
             $prefix = 'A';
         } elseif (str_contains($tag, 'NC-')) {
             $prefix = 'C';
         } else {
             // 如果不符合 H 或 NC 規則，這裡需要決定怎麼辦
-            // 暫時邏輯：如果沒有特定前綴，預設用 'X' 或保留原樣？
-            // 根據你的描述，假設所有資料都符合 H/NC 規則
-            // 這裡做一個容錯：直接取所有數字，前面補 A (或是報錯)
-            // 為了安全，我們先回傳 null 讓外部跳過報錯
-            // return null; 
-            
-            // 或者：直接硬轉，把所有非數字去掉
              $prefix = 'E'; // Unknown
         }
 
