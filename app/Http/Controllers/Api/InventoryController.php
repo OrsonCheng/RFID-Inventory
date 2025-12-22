@@ -59,11 +59,6 @@ class InventoryController extends Controller implements HasMiddleware
         // 篩選資產邏輯
         $query = FixedAsset::where('responsible_user_id', $responsibleUser->id);
         
-        // 若有指定分類 (e.g. F1)
-        if ($request->filled('category')) {
-             $query->where('category', $request->input('category'));
-        }
-
         $assetsToInventory = $query->get();
 
         if ($assetsToInventory->isEmpty()) {
