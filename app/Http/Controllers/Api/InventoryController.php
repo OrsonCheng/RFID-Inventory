@@ -57,8 +57,7 @@ class InventoryController extends Controller implements HasMiddleware
         $responsibleUser = User::findOrFail($request->input('responsible_user_id'));
         
         // 篩選資產邏輯
-        $query = FixedAsset::where('responsible_user_id', $responsibleUser->id)
-                           ->whereIn('status', ['使用中', '閒置']);
+        $query = FixedAsset::where('responsible_user_id', $responsibleUser->id);
         
         // 若有指定分類 (e.g. F1)
         if ($request->filled('category')) {
