@@ -204,7 +204,7 @@
               </div>
               <div class="text-[10px] text-slate-500 mt-1 flex items-center gap-1 italic">
                 {{ item.fixed_asset.factory_area }} <span class="text-slate-300">/</span>
-                {{ item.fixed_asset.floor }}F <span class="text-slate-300">/</span>
+                {{ item.fixed_asset.floor }} <span class="text-slate-300">/</span>
                 {{ item.fixed_asset.area }}
               </div>
             </div>
