@@ -71,7 +71,7 @@
                 <span
                   class="text-[10px] font-bold text-slate-400 uppercase tracking-tighter"
                 >
-                  {{ group.factory }} <span v-if="group.floor">/ {{ group.floor }}</span>
+                  {{ group.factory }}<span v-if="group.floor">{{ group.floor }}</span>
                 </span>
                 <span class="text-sm font-black text-slate-700 tracking-wider">{{
                   group.areaName
@@ -203,7 +203,7 @@
                 {{ item.fixed_asset.asset_tag }}
               </div>
               <div class="text-[10px] text-slate-500 mt-1 flex items-center gap-1 italic">
-                {{ item.fixed_asset.factory_area }} <span class="text-slate-300">/</span>
+                {{ item.fixed_asset.factory_area }}
                 {{ item.fixed_asset.floor }} <span class="text-slate-300">/</span>
                 {{ item.fixed_asset.area }}
               </div>
