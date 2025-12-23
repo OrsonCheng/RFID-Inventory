@@ -71,7 +71,7 @@
                 <span
                   class="text-[10px] font-bold text-slate-400 uppercase tracking-tighter"
                 >
-                  {{ group.factory }} <span v-if="group.floor">/ {{ group.floor }}F</span>
+                  {{ group.factory }} <span v-if="group.floor">/ {{ group.floor }}</span>
                 </span>
                 <span class="text-sm font-black text-slate-700 tracking-wider">{{
                   group.areaName
