@@ -8,6 +8,12 @@ export function useOfflineSync(workOrderId, orderRef) {
     const isSyncing = ref(false);
     const syncMsg = ref('');
 
+    // ★★★ 參數調校 ★★★
+    // 將同步間隔從 100ms 拉長到 500ms
+    // 這能顯著降低瞬間 Request 量，避免像之前那樣打掛 Nginx/PHP
+    // 雖然同步速度變慢 (每秒約 2 筆)，但換來的是系統穩定性
+    const SYNC_INTERVAL = 500;
+
     // 實際的連線狀態 (考慮模擬斷網)
     const effectiveIsOnline = computed(() => {
         return isOnline.value && !isSimulatedOffline.value;
@@ -44,8 +50,8 @@ export function useOfflineSync(workOrderId, orderRef) {
 
             try {
                 // 這裡使用單筆掃描接口進行補上傳
-                const res = await axios.post(`/api/inventory/work-orders/${workOrderId}/scan`, { 
-                    rfid_tag: rfid 
+                const res = await axios.post(`/api/inventory/work-orders/${workOrderId}/scan`, {
+                    rfid_tag: rfid
                 });
 
                 // 更新 Order 狀態
@@ -55,15 +61,15 @@ export function useOfflineSync(workOrderId, orderRef) {
                 }
 
                 pendingSyncQueue.value.shift(); // 移除已處理
-                setTimeout(processNext, 100);   // 處理下一筆
+                setTimeout(processNext, SYNC_INTERVAL);   // 處理下一筆
 
             } catch (e) {
                 // 如果是 404/422 (無效標籤)，也視為已處理(移除)，並將狀態改回未盤
                 if (e.response && (e.response.status === 404 || e.response.status === 422)) {
-                     pendingSyncQueue.value.shift();
-                     const idx = orderRef.value.items.findIndex(i => i.fixed_asset?.rfid_tag === rfid);
-                     if (idx !== -1) orderRef.value.items[idx].status = '未盤'; // 或標記為錯誤
-                     setTimeout(processNext, 100);
+                    pendingSyncQueue.value.shift();
+                    const idx = orderRef.value.items.findIndex(i => i.fixed_asset?.rfid_tag === rfid);
+                    if (idx !== -1) orderRef.value.items[idx].status = '未盤'; // 或標記為錯誤
+                    setTimeout(processNext, SYNC_INTERVAL);
                 } else {
                     // 網路錯誤，中斷同步
                     isSyncing.value = false;
