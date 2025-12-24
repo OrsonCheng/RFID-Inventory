@@ -8,18 +8,18 @@ export function useInventoryScan(workOrderId, orderRef, isOnlineRef, pendingSync
     const scanQueue = ref([]);
     const isProcessing = ref(false);
     const inputWarning = ref(false);
-    
+
     // UI 狀態訊息
     const msg = ref('');
-    const msgType = ref(''); 
+    const msgType = ref('');
     const scannedAssetInfo = ref('');
-    
+
     const batchTimer = ref(null);
     let lastKeyTime = 0;
-    
+
     // ★★★ 參數調校 (解決漏掃關鍵) ★★★
     // 1. 放寬手動輸入判定 (避免電腦卡頓時誤刪資料)
-    const SCAN_SPEED_THRESHOLD = 200; 
+    const SCAN_SPEED_THRESHOLD = 200;
     // 2. 批次等待時間 (蒐集更多條碼再一次送出)
     const BATCH_WAIT_TIME = 700;
 
@@ -32,14 +32,14 @@ export function useInventoryScan(workOrderId, orderRef, isOnlineRef, pendingSync
         'KeyS': 's', 'KeyT': 't', 'KeyU': 'u', 'KeyV': 'v', 'KeyW': 'w', 'KeyX': 'x',
         'KeyY': 'y', 'KeyZ': 'z',
         'Minus': '-', 'Equal': '=', 'BracketLeft': '[', 'BracketRight': ']',
-        'Backslash': '\\', 'Semicolon': ';', 'Quote': "'", 'Comma': ',', 
+        'Backslash': '\\', 'Semicolon': ';', 'Quote': "'", 'Comma': ',',
         'Period': '.', 'Slash': '/', 'Space': ' '
     };
     const SHIFT_CODE_MAP = {
         'Digit0': ')', 'Digit1': '!', 'Digit2': '@', 'Digit3': '#', 'Digit4': '$',
         'Digit5': '%', 'Digit6': '^', 'Digit7': '&', 'Digit8': '*', 'Digit9': '(',
         'Minus': '_', 'Equal': '+', 'BracketLeft': '{', 'BracketRight': '}',
-        'Backslash': '|', 'Semicolon': ':', 'Quote': '"', 'Comma': '<', 
+        'Backslash': '|', 'Semicolon': ':', 'Quote': '"', 'Comma': '<',
         'Period': '>', 'Slash': '?'
     };
 
@@ -79,7 +79,7 @@ export function useInventoryScan(workOrderId, orderRef, isOnlineRef, pendingSync
 
         if (char) {
             e.preventDefault();
-            
+
             if (scanBuffer.value.length > 0 && timeDiff > SCAN_SPEED_THRESHOLD) {
                 console.warn(`⚠️ 偵測到手動輸入 (間隔 ${timeDiff}ms)，已阻擋`);
                 resetBufferWithWarning();
@@ -87,7 +87,7 @@ export function useInventoryScan(workOrderId, orderRef, isOnlineRef, pendingSync
             }
             inputWarning.value = false;
             scanBuffer.value += char.toUpperCase();
-            
+
             if (!isProcessing.value) {
                 displayValue.value = scanBuffer.value;
             }
@@ -106,7 +106,7 @@ export function useInventoryScan(workOrderId, orderRef, isOnlineRef, pendingSync
         if (newLength > 0) {
             if (batchTimer.value) clearTimeout(batchTimer.value);
             // 每次有新輸入就重新計時，直到 500ms 內沒有新輸入才送出
-            batchTimer.value = setTimeout(processBatchQueue, BATCH_WAIT_TIME); 
+            batchTimer.value = setTimeout(processBatchQueue, BATCH_WAIT_TIME);
         }
     });
 
@@ -147,10 +147,10 @@ export function useInventoryScan(workOrderId, orderRef, isOnlineRef, pendingSync
                 msgType.value = 'neutral'; // 新增 neutral 類型
                 scannedAssetInfo.value = `忽略 ${currentBatch.length} 個無關訊號`;
             }
-            
+
             isProcessing.value = false;
             if (scanQueue.value.length > 0) processBatchQueue();
-            else setTimeout(() => { if(displayValue.value.includes('處理')) displayValue.value = ''; }, 800);
+            else setTimeout(() => { if (displayValue.value.includes('處理')) displayValue.value = ''; }, 800);
             return;
         }
 
@@ -165,7 +165,7 @@ export function useInventoryScan(workOrderId, orderRef, isOnlineRef, pendingSync
             // 更新成功項目
             success.forEach(updatedItem => {
                 const idx = orderRef.value.items.findIndex(i => i.id === updatedItem.id);
-                if(idx !== -1) orderRef.value.items[idx] = updatedItem;
+                if (idx !== -1) orderRef.value.items[idx] = updatedItem;
             });
 
             // ★ 區分「真實錯誤」與「無關雜訊」
@@ -177,7 +177,7 @@ export function useInventoryScan(workOrderId, orderRef, isOnlineRef, pendingSync
                 // 情境 A: 有成功 (無論有沒有雜訊，都顯示成功綠色)
                 msg.value = `批次成功: ${success.length} 筆`;
                 msgType.value = 'success';
-                
+
                 // 如果有雜訊，只在小字提示，不干擾主訊息
                 if (noiseCount > 0) {
                     scannedAssetInfo.value = `(已過濾 ${noiseCount} 個無關訊號)`;
@@ -194,7 +194,7 @@ export function useInventoryScan(workOrderId, orderRef, isOnlineRef, pendingSync
                 } else {
                     // 全都是無關雜訊 -> 顯示淡灰色 (Neutral)
                     msg.value = '未偵測到本單資產';
-                    msgType.value = 'neutral'; 
+                    msgType.value = 'neutral';
                     scannedAssetInfo.value = `忽略 ${noiseCount} 個無關訊號`;
                 }
             }
@@ -204,15 +204,33 @@ export function useInventoryScan(workOrderId, orderRef, isOnlineRef, pendingSync
             msg.value = '連線失敗';
             msgType.value = 'error';
         } finally {
-            isProcessing.value = false;
-            if (scanQueue.value.length > 0) {
-                processBatchQueue();
-            } else {
-                setTimeout(() => { if(displayValue.value.includes('處理')) displayValue.value = ''; }, 1000);
-            }
+            finishProcessing();
         }
     };
-    
+
+    // 統一的結束處理函式，負責調度下一次批次
+    const finishProcessing = () => {
+        isProcessing.value = false;
+
+        // 🔥【關鍵修正】🔥
+        // 檢查佇列是否還有新資料
+        if (scanQueue.value.length > 0) {
+            // 重要：即使有資料，也不要立刻執行！
+            // 而是重新設定 Timer，強制等待 BATCH_WAIT_TIME
+            // 這樣可以把處理期間累積的 1-2 筆資料，與接下來 700ms 內掃到的資料合併
+            // 徹底避免 "一有資料就送" 的高頻請求
+            console.log(`📥 佇列還有 ${scanQueue.value.length} 筆，重新倒數 ${BATCH_WAIT_TIME}ms 後發送`);
+
+            if (batchTimer.value) clearTimeout(batchTimer.value);
+            batchTimer.value = setTimeout(processBatchQueue, BATCH_WAIT_TIME);
+        } else {
+            // 佇列空了，清除 UI 上的 "處理中..." 文字
+            setTimeout(() => {
+                if (displayValue.value.includes('處理')) displayValue.value = '';
+            }, 800);
+        }
+    };
+
     const focusInput = () => {
         scanInput.value?.focus();
     };
