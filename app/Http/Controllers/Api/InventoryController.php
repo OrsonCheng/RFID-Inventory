@@ -94,7 +94,7 @@ class InventoryController extends Controller implements HasMiddleware
     {
         $workOrder = InventoryWorkOrder::with([
             'responsibleUser',
-            'items.fixedAsset:id,asset_tag,rfid_tag,factory_area,floor,area,name,spec,location',
+            'items.fixedAsset:id,asset_tag,rfid_tag,factory_area,floor,area,name,location',
             'items.scanner:id,name' 
         ])->findOrFail($id);
         
