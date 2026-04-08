@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\SSOController; 
 use App\Http\Controllers\AssetImportController;
 use App\Http\Controllers\Api\RfidController;
+use App\Http\Controllers\Api\CalibrationController;
 
 /*
 | API Routes
@@ -69,6 +70,9 @@ Route::middleware('auth:sanctum')->group(function () {
 	
 	// 資產匯入路由
 	Route::post('/assets/import', [AssetImportController::class, 'import']);
+
+	// 校驗紀錄路由
+	Route::get('/calibrations', [CalibrationController::class, 'index']);
 });
 
 // SSO 登出 (API)

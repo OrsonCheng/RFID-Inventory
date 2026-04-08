@@ -7,6 +7,7 @@ import AuthCallback from '../Pages/AuthCallback.vue';
 import AssetManagement from '../Pages/AssetManagement.vue';
 import InventoryDashboard from '../Pages/InventoryDashboard.vue';
 import InventoryWorkPage from '../Pages/InventoryWorkPage.vue';
+import CalibrationRecords from '../Pages/CalibrationRecords.vue';
 
 const routes = [
     {
@@ -42,6 +43,12 @@ const routes = [
         name: 'InventoryWorkPage',
         component: InventoryWorkPage,
         props: true,
+        meta: { requiresAuth: true }
+    },
+    {
+        path: '/calibrations',
+        name: 'CalibrationRecords',
+        component: CalibrationRecords,
         meta: { requiresAuth: true }
     },
 ];

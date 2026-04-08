@@ -23,6 +23,9 @@
               <router-link to="/inventory" active-class="bg-slate-800 text-white" class="nav-link">
                 <ClipboardList class="w-4 h-4" /> 盤點工單
               </router-link>
+              <router-link to="/calibrations" active-class="bg-slate-800 text-white" class="nav-link">
+                <Activity class="w-4 h-4" /> 校驗紀錄
+              </router-link>
             </div>
           </div>
 
@@ -63,7 +66,7 @@
 </template>
 
 <script setup>
-import { ScanBarcode, Package, ClipboardList, LogOut, Shield } from 'lucide-vue-next';
+import { ScanBarcode, Package, ClipboardList, LogOut, Shield, Activity } from 'lucide-vue-next';
 import { useAuthStore } from './stores/auth';
 import { useRouter } from 'vue-router';
 
