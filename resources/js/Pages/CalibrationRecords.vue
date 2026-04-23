@@ -128,9 +128,6 @@
               </td>
               <td class="px-6 py-4">
                  <div class="font-bold text-slate-800">{{ record.channel_id }}</div>
-                 <div class="text-xs text-slate-500 flex items-center gap-1 mt-0.5" v-if="record.channel_ip">
-                    <Monitor class="w-3 h-3"/> {{ record.channel_ip }}
-                 </div>
               </td>
               <td class="px-6 py-4 font-medium text-slate-700">
                 <div class="flex items-center gap-1.5 text-slate-600">
