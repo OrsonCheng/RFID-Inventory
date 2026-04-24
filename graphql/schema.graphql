@@ -1,0 +1,102 @@
+"A datetime string with format `Y-m-d H:i:s`, e.g. `2018-05-23 13:43:32`."
+scalar DateTime @scalar(class: "Nuwave\\Lighthouse\\Schema\\Types\\Scalars\\DateTime")
+
+"A date string with format `Y-m-d`, e.g. `2011-05-23`."
+scalar Date @scalar(class: "Nuwave\\Lighthouse\\Schema\\Types\\Scalars\\Date")
+
+type Query {
+    fixedAssets(
+        asset_tag: String @where(operator: "like")
+        rfid_tag: String @where(operator: "like")
+        name: String @where(operator: "like")
+        status: String @eq
+    ): [FixedAsset!]! @paginate(defaultCount: 10)
+
+    fixedAsset(id: ID @eq): FixedAsset @find
+}
+
+type Mutation {
+    createFixedAsset(
+        asset_tag: String!
+        rfid_tag: String
+        ppid: String
+        name: String!
+        spec: String
+        brand: String
+        model: String
+        purchased_at: Date
+        source_type: String
+        company: String
+        department_code: String
+        department_name: String
+        factory_area: String
+        floor: String
+        area: String
+        location: String
+        keeper: String
+        status: String
+        responsible_user_id: ID
+        remark: String
+    ): FixedAsset! @create
+
+    updateFixedAsset(
+        id: ID!
+        asset_tag: String
+        rfid_tag: String
+        ppid: String
+        name: String
+        spec: String
+        brand: String
+        model: String
+        purchased_at: Date
+        source_type: String
+        company: String
+        department_code: String
+        department_name: String
+        factory_area: String
+        floor: String
+        area: String
+        location: String
+        keeper: String
+        status: String
+        responsible_user_id: ID
+        remark: String
+    ): FixedAsset! @update
+
+    deleteFixedAsset(id: ID!): FixedAsset @delete
+}
+
+type FixedAsset {
+    id: ID!
+    asset_tag: String!
+    rfid_tag: String
+    ppid: String
+    name: String!
+    spec: String
+    brand: String
+    model: String
+    purchased_at: Date
+    source_type: String
+    company: String
+    department_code: String
+    department_name: String
+    factory_area: String
+    floor: String
+    area: String
+    location: String
+    keeper: String
+    status: String
+    responsible_user_id: ID
+    responsibleUser: User @belongsTo
+    remark: String
+    created_at: DateTime!
+    updated_at: DateTime!
+}
+
+type User {
+    id: ID!
+    name: String!
+    email: String!
+    created_at: DateTime!
+    updated_at: DateTime!
+}
