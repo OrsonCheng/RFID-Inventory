@@ -15,56 +15,56 @@ type Query {
     fixedAsset(id: ID @eq): FixedAsset @find
 }
 
-type Mutation {
-    createFixedAsset(
-        asset_tag: String!
-        rfid_tag: String
-        ppid: String
-        name: String!
-        spec: String
-        brand: String
-        model: String
-        purchased_at: Date
-        source_type: String
-        company: String
-        department_code: String
-        department_name: String
-        factory_area: String
-        floor: String
-        area: String
-        location: String
-        keeper: String
-        status: String
-        responsible_user_id: ID
-        remark: String
-    ): FixedAsset! @create
-
-    updateFixedAsset(
-        id: ID!
-        asset_tag: String
-        rfid_tag: String
-        ppid: String
-        name: String
-        spec: String
-        brand: String
-        model: String
-        purchased_at: Date
-        source_type: String
-        company: String
-        department_code: String
-        department_name: String
-        factory_area: String
-        floor: String
-        area: String
-        location: String
-        keeper: String
-        status: String
-        responsible_user_id: ID
-        remark: String
-    ): FixedAsset! @update
-
-    deleteFixedAsset(id: ID!): FixedAsset @delete
-}
+# type Mutation {
+#     createFixedAsset(
+#         asset_tag: String!
+#         rfid_tag: String
+#         ppid: String
+#         name: String!
+#         spec: String
+#         brand: String
+#         model: String
+#         purchased_at: Date
+#         source_type: String
+#         company: String
+#         department_code: String
+#         department_name: String
+#         factory_area: String
+#         floor: String
+#         area: String
+#         location: String
+#         keeper: String
+#         status: String
+#         responsible_user_id: ID
+#         remark: String
+#     ): FixedAsset! @create
+# 
+#     updateFixedAsset(
+#         id: ID!
+#         asset_tag: String
+#         rfid_tag: String
+#         ppid: String
+#         name: String
+#         spec: String
+#         brand: String
+#         model: String
+#         purchased_at: Date
+#         source_type: String
+#         company: String
+#         department_code: String
+#         department_name: String
+#         factory_area: String
+#         floor: String
+#         area: String
+#         location: String
+#         keeper: String
+#         status: String
+#         responsible_user_id: ID
+#         remark: String
+#     ): FixedAsset! @update
+# 
+#     deleteFixedAsset(id: ID!): FixedAsset @delete
+# }
 
 type FixedAsset {
     id: ID!
