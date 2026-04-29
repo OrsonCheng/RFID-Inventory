@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\SSOController;
 use App\Http\Controllers\AssetImportController;
 use App\Http\Controllers\Api\RfidController;
 use App\Http\Controllers\Api\CalibrationController;
+use App\Http\Controllers\Api\ChannelController;
 
 /*
 | API Routes
@@ -28,6 +29,8 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 Route::get('/assets/rfid-lookup', [RfidController::class, 'lookup']);//輸入資產編號 找RFID
 Route::post('/assets/bind-rfid', [RfidController::class, 'bind']);//綁定 rfid 與 自定義編號
 Route::post('/assets/verify', [RfidController::class, 'verify']);//驗證rfid 與 自定義編號一致
+
+Route::post('/assets/verify', [ChannelController::class, 'generateId']);//驗證rfid 與 自定義編號一致
 
 Route::middleware('auth:sanctum')->group(function () {
 	// 1. 資產管理 (綁定 RFID, 導入)
