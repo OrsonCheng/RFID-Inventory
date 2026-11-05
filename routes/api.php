@@ -30,7 +30,7 @@ Route::get('/assets/rfid-lookup', [RfidController::class, 'lookup']);//輸入資
 Route::post('/assets/bind-rfid', [RfidController::class, 'bind']);//綁定 rfid 與 自定義編號
 Route::post('/assets/verify', [RfidController::class, 'verify']);//驗證rfid 與 自定義編號一致
 
-Route::post('/assets/verify', [ChannelController::class, 'generateId']);//驗證rfid 與 自定義編號一致
+Route::post('/Channel/GenerateID', [ChannelController::class, 'generateId']);//自動校正 產生learning 機通道ID
 
 Route::middleware('auth:sanctum')->group(function () {
 	// 1. 資產管理 (綁定 RFID, 導入, 導出)
