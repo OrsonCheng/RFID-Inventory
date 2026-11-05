@@ -17,21 +17,32 @@
       </div>
 
       <!-- 頂部按鈕群 -->
-      <div class="flex gap-3" v-if="authStore.canManageAssets">
+      <div class="flex gap-3">
         <button
-          @click="showImportModal = true"
-          class="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-300 text-slate-700 font-medium rounded-xl hover:bg-slate-50 hover:border-slate-400 transition-all shadow-sm"
+          @click="exportCsv"
+          :disabled="exporting"
+          class="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-300 text-slate-700 font-medium rounded-xl hover:bg-slate-50 hover:border-slate-400 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <UploadCloud class="w-4 h-4 text-slate-500" />
-          <span>批量導入</span>
+          <Loader2 v-if="exporting" class="w-4 h-4 text-slate-500 animate-spin" />
+          <Download v-else class="w-4 h-4 text-slate-500" />
+          <span>{{ exporting ? "導出中..." : "資料導出" }}</span>
         </button>
-        <button
-          @click="openAddModal"
-          class="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 hover:shadow-indigo-200 hover:shadow-lg transition-all shadow-md active:scale-95"
-        >
-          <Plus class="w-5 h-5" />
-          <span>新增資產</span>
-        </button>
+        <template v-if="authStore.canManageAssets">
+          <button
+            @click="showImportModal = true"
+            class="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-300 text-slate-700 font-medium rounded-xl hover:bg-slate-50 hover:border-slate-400 transition-all shadow-sm"
+          >
+            <UploadCloud class="w-4 h-4 text-slate-500" />
+            <span>批量導入</span>
+          </button>
+          <button
+            @click="openAddModal"
+            class="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 hover:shadow-indigo-200 hover:shadow-lg transition-all shadow-md active:scale-95"
+          >
+            <Plus class="w-5 h-5" />
+            <span>新增資產</span>
+          </button>
+        </template>
       </div>
     </div>
 
@@ -481,6 +492,7 @@ import {
   Package,
   Plus,
   UploadCloud,
+  Download,
   Search,
   Filter,
   Wifi,
@@ -508,6 +520,7 @@ const authStore = useAuthStore();
 const assets = ref([]);
 const users = ref([]);
 const loading = ref(false);
+const exporting = ref(false);
 const showAddModal = ref(false);
 const isEditMode = ref(false);
 const searchQuery = ref("");
@@ -594,6 +607,36 @@ const uniqueOwners = computed(() => {
 });
 
 // Actions
+const exportCsv = async () => {
+  exporting.value = true;
+  try {
+    const res = await axios.get("/api/assets/export", {
+      responseType: "blob",
+    });
+
+    const blob = new Blob([res.data], { type: "text/csv;charset=utf-8;" });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+
+    const now = new Date();
+    const dateStr =
+      now.getFullYear().toString() +
+      String(now.getMonth() + 1).padStart(2, "0") +
+      String(now.getDate()).padStart(2, "0");
+    link.setAttribute("download", `fixed_assets_${dateStr}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  } catch (e) {
+    console.error(e);
+    alert("導出失敗，請稍後再試");
+  } finally {
+    exporting.value = false;
+  }
+};
+
 const openAddModal = () => {
   isEditMode.value = false;
   Object.assign(form, defaultForm);

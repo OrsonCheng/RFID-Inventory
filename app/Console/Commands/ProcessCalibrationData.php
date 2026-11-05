@@ -6,6 +6,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Carbon\Carbon;
 
 class ProcessCalibrationData extends Command
@@ -23,6 +24,12 @@ class ProcessCalibrationData extends Command
     
     // 熔斷器狀態標記
     protected bool $dbIsDown = false;
+	
+	// ==========================================
+    // 新增：心跳與計數屬性
+    // ==========================================
+    protected int $processedCount = 0;
+    protected int $lastLogTime = 0;
 
     /**
      * 主程式進入點：負責流程編排 (Orchestration)
@@ -33,9 +40,27 @@ class ProcessCalibrationData extends Command
 
         // 1. 啟動時的孤兒資料救援 (Orphan Recovery)
         $this->recoverOrphanedData();
+		
+		// 初始化心跳時間為 Worker 啟動當下
+        $this->lastLogTime = time();
 
         // 2. 無窮迴圈處理任務
         while (true) {
+			// ==========================================
+            // 【時間心跳機制】每 1hr 紀錄一次
+            // ==========================================
+            if ((time() - $this->lastLogTime) >= 3600) {
+                Log::info("Calibration Worker 心跳正常。目前已累計處理 {$this->processedCount} 筆資料。");
+                
+                // 終端機畫面只有在加上 -v 參數時才印出，保持乾淨
+                if ($this->getOutput()->isVerbose()) {
+                    $this->info("[" . now()->toDateTimeString() . "] Worker 心跳正常，已累計處理 {$this->processedCount} 筆。");
+                }
+                
+                $this->lastLogTime = time(); // 重置計時器
+				$this->processedCount = 0;//reset counter
+            }
+			
             // 如果觸發了熔斷，進入探測與休眠模式
             if ($this->dbIsDown) {
                 $this->waitForDatabaseRecovery();
@@ -57,11 +82,15 @@ class ProcessCalibrationData extends Command
                 $this->acknowledgeJob($rawPayload);
 
             } catch (\PDOException | \Illuminate\Database\QueryException $e) {
-                // 處理資料庫斷線等系統層級錯誤 (觸發熔斷)
-                $this->handleSystemError($e, $rawPayload);
-
+                // 區分是「真的斷線」還是「SQL 語法/資料衝突錯誤」
+                if ($this->isConnectionError($e)) {
+                    $this->handleSystemError($e, $rawPayload);
+                } else {
+                    // 這是 SQL 資料錯誤 (例如 Primary Key 重複、欄位不可為 Null)
+                    $this->handleDataError($e, $rawPayload);
+                }
             } catch (\Exception $e) {
-                // 處理 JSON 格式錯誤或缺少必要欄位等永久性錯誤 (移入死信佇列)
+                // 處理 JSON 格式錯誤或缺少必要欄位等永久性錯誤
                 $this->handleDataError($e, $rawPayload);
             }
         }
@@ -225,6 +254,8 @@ class ProcessCalibrationData extends Command
     private function acknowledgeJob(string $rawPayload): void
     {
         Redis::lrem($this->processingQueue, 1, $rawPayload);
+		// 成功處理一筆，計數器 +1
+        $this->processedCount++;
     }
 
     /**
@@ -279,5 +310,28 @@ class ProcessCalibrationData extends Command
             'Difference' => $point['Difference'] ?? 0,
             'Status' => $point['Status'] ?? null,
         ];
+    }
+	
+	/**
+     * 判斷是否為真實的資料庫連線中斷錯誤
+     */
+    private function isConnectionError(\Exception $e): bool
+    {
+        $message = strtolower($e->getMessage());
+
+        // 常見的 MySQL/伺服器斷線關鍵字與 SQLSTATE 碼
+        return Str::contains($message, [
+            'server has gone away',
+            'no connection to the server',
+            'lost connection',
+            'is dead or not enabled',
+            'connection refused',
+            'actively refused', // 對應 [2002]
+            'connection attempt failed',
+            'has failed to respond',
+            'read error on connection',
+            'sqlstate[hy000] [2002]',
+            'sqlstate[08s01]',
+        ]);
     }
 }

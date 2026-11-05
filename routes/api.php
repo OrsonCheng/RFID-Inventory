@@ -33,7 +33,8 @@ Route::post('/assets/verify', [RfidController::class, 'verify']);//驗證rfid �
 Route::post('/assets/verify', [ChannelController::class, 'generateId']);//驗證rfid 與 自定義編號一致
 
 Route::middleware('auth:sanctum')->group(function () {
-	// 1. 資產管理 (綁定 RFID, 導入)
+	// 1. 資產管理 (綁定 RFID, 導入, 導出)
+	Route::get('assets/export', [FixedAssetController::class, 'export']);
 	Route::apiResource('assets', FixedAssetController::class);
 	Route::post('assets/batch-import', [FixedAssetController::class, 'batchImport']);
 

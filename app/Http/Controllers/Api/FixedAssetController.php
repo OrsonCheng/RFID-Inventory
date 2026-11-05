@@ -20,11 +20,58 @@ class FixedAssetController extends Controller implements HasMiddleware
     {
         return [
             // 所有人都能看
-            new Middleware('permission:view assets', only: ['index', 'show']),
+            new Middleware('permission:view assets', only: ['index', 'show', 'export']),
             
             // 只有授權者能管理
             new Middleware('permission:manage assets', only: ['store', 'update', 'destroy', 'batchImport']),
         ];
+    }
+
+    public function export()
+    {
+        $fileName = 'fixed_assets_' . date('Ymd_His') . '.csv';
+
+        return response()->streamDownload(function () {
+            $handle = fopen('php://output', 'w');
+
+            // 寫入 UTF-8 BOM，避免 Excel 開啟中文亂碼
+            fwrite($handle, "\xEF\xBB\xBF");
+
+            // 標題列：對應編輯頁面能看到的所有欄位
+            fputcsv($handle, [
+                '固資編號',
+                '設備名稱',
+                'RFID 標籤 ID',
+                '保管人',
+                '狀態',
+                '廠區',
+                '樓層',
+                '區域',
+                '存放位置',
+            ]);
+
+            FixedAsset::with('responsibleUser')
+                ->orderBy('id', 'asc')
+                ->chunk(500, function ($assets) use ($handle) {
+                    foreach ($assets as $asset) {
+                        fputcsv($handle, [
+                            $asset->asset_tag,
+                            $asset->name,
+                            $asset->rfid_tag,
+                            $asset->responsibleUser?->name ?? $asset->keeper ?? '',
+                            $asset->status,
+                            $asset->factory_area,
+                            $asset->floor,
+                            $asset->area,
+                            $asset->location,
+                        ]);
+                    }
+                });
+
+            fclose($handle);
+        }, $fileName, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
     }
 
     public function index(Request $request)
