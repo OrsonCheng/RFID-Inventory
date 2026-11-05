@@ -50,20 +50,32 @@ class FixedAssetController extends Controller implements HasMiddleware
                 '存放位置',
             ]);
 
+            // 防止 Excel 將 '-'、'+'、'='、'@' 開頭的字串當成公式（導致 #NAME?），或將長數字/前導零轉為科學記號
+            $escapeForExcel = function ($value, bool $forceText = false) {
+                if ($value === null || $value === '') {
+                    return '';
+                }
+                $str = (string) $value;
+                if ($forceText || preg_match('/^[\-\+\=\@]/', $str)) {
+                    return '="' . str_replace('"', '""', $str) . '"';
+                }
+                return $str;
+            };
+
             FixedAsset::with('responsibleUser')
                 ->orderBy('id', 'asc')
-                ->chunk(500, function ($assets) use ($handle) {
+                ->chunk(500, function ($assets) use ($handle, $escapeForExcel) {
                     foreach ($assets as $asset) {
                         fputcsv($handle, [
-                            $asset->asset_tag,
-                            $asset->name,
-                            $asset->rfid_tag,
-                            $asset->responsibleUser?->name ?? $asset->keeper ?? '',
-                            $asset->status,
-                            $asset->factory_area,
-                            $asset->floor,
-                            $asset->area,
-                            $asset->location,
+                            $escapeForExcel($asset->asset_tag, true),
+                            $escapeForExcel($asset->name),
+                            $escapeForExcel($asset->rfid_tag, true),
+                            $escapeForExcel($asset->responsibleUser?->name ?? $asset->keeper ?? ''),
+                            $escapeForExcel($asset->status),
+                            $escapeForExcel($asset->factory_area),
+                            $escapeForExcel($asset->floor),
+                            $escapeForExcel($asset->area),
+                            $escapeForExcel($asset->location),
                         ]);
                     }
                 });
