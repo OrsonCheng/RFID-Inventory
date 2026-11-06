@@ -100,11 +100,11 @@
     <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
         <div class="overflow-x-auto">
             <table class="min-w-full text-left border-collapse">
-                <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 text-xs font-bold uppercase tracking-wider">
+                <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 text-xs font-bold uppercase tracking-wider whitespace-nowrap">
                     <tr>
                         <th class="px-6 py-4">工單資訊 / 類型</th>
                         <th class="px-6 py-4">保管人 / 負責單位</th>
-                        <th class="px-6 py-4 w-1/4">盤點進度</th>
+                        <th class="px-6 py-4 w-1/4 min-w-[180px]">盤點進度</th>
                         <th class="px-6 py-4">狀態</th>
                         <th class="px-6 py-4">建立日期</th>
                         <th class="px-6 py-4 text-right">操作</th>
@@ -125,9 +125,9 @@
                     </tr>
                     <tr v-for="order in filteredOrders" :key="order.id" class="group hover:bg-indigo-50/30 transition-colors">
                         <!-- 工單資訊 -->
-                        <td class="px-6 py-4">
+                        <td class="px-6 py-4 max-w-xs">
                             <div class="flex items-start gap-3">
-                                <div class="mt-1">
+                                <div class="mt-0.5 shrink-0">
                                     <!-- 根據標題判斷類型圖示 -->
                                     <div v-if="isAnnualAudit(order.title)" class="p-2 bg-purple-100 text-purple-600 rounded-lg" title="年度盤點 (高重要性)">
                                         <Flag class="w-5 h-5" />
@@ -136,11 +136,14 @@
                                         <CalendarClock class="w-5 h-5" />
                                     </div>
                                 </div>
-                                <div>
-                                    <div class="font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
-                                        {{ order.title }}
+                                <div class="min-w-0">
+                                    <div
+                                        class="font-bold text-slate-900 group-hover:text-indigo-600 transition-colors truncate"
+                                        :title="formatOrderTitle(order.title)"
+                                    >
+                                        {{ formatOrderTitle(order.title) }}
                                     </div>
-                                    <div class="text-xs text-slate-500 font-mono mt-0.5 flex items-center gap-2">
+                                    <div class="text-xs text-slate-500 font-mono mt-1 flex items-center gap-2 whitespace-nowrap">
                                         <span>#{{ order.id.toString().padStart(6, '0') }}</span>
                                         <!-- 模擬類型標籤 -->
                                         <span v-if="isAnnualAudit(order.title)" class="px-1.5 py-0.5 bg-purple-50 text-purple-600 rounded border border-purple-100 text-[10px] font-bold">年度大盤</span>
@@ -151,21 +154,21 @@
                         </td>
 
                         <!-- 保管人 -->
-                        <td class="px-6 py-4">
+                        <td class="px-6 py-4 whitespace-nowrap">
                             <div class="flex items-center gap-3">
-                                <div class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-600 border-2 border-white shadow-sm">
-                                    {{ order.responsible_user?.name?.charAt(0) }}
+                                <div class="w-8 h-8 shrink-0 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-600 border-2 border-white shadow-sm">
+                                    {{ parseUserName(order.responsible_user?.name).avatar }}
                                 </div>
                                 <div>
-                                    <div class="text-sm font-bold text-slate-700">{{ order.responsible_user?.name }}</div>
-                                    <div class="text-xs text-slate-400">TE Dept.</div>
+                                    <div class="text-sm font-bold text-slate-700">{{ parseUserName(order.responsible_user?.name).primary }}</div>
+                                    <div class="text-xs text-slate-400 font-mono">{{ parseUserName(order.responsible_user?.name).secondary }}</div>
                                 </div>
                             </div>
                         </td>
 
                         <!-- 進度條 (使用後端回傳的 scanned_count) -->
-                        <td class="px-6 py-4">
-                            <div class="flex justify-between items-end mb-1">
+                        <td class="px-6 py-4 min-w-[180px]">
+                            <div class="flex justify-between items-end mb-1 whitespace-nowrap gap-2">
                                 <span class="text-xs font-bold text-slate-600">{{ calculateProgress(order) }}%</span>
                                 <span class="text-xs text-slate-400">{{ order.scanned_count || 0 }} / {{ order.items_count }}</span>
                             </div>
@@ -179,42 +182,40 @@
                         </td>
 
                         <!-- 狀態 -->
-                        <td class="px-6 py-4">
+                        <td class="px-6 py-4 whitespace-nowrap">
                             <span :class="statusBadgeClass(order.status)">
                                 {{ statusLabel(order.status) }}
                             </span>
                         </td>
 
                         <!-- 日期 -->
-                        <td class="px-6 py-4">
+                        <td class="px-6 py-4 whitespace-nowrap">
                             <div class="text-sm text-slate-600">{{ new Date(order.created_at).toLocaleDateString() }}</div>
                             <div class="text-xs text-slate-400">{{ getTimeAgo(order.created_at) }}</div>
                         </td>
 
                         <!-- 操作 -->
-                        <td class="px-6 py-4 text-right">
+                        <td class="px-6 py-4 text-right whitespace-nowrap">
                             <div class="inline-flex items-center justify-end gap-2">
                                 <button
                                     @click="openCheckAssetModal(order)"
-                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-300 text-slate-700 text-xs font-bold rounded-lg hover:bg-amber-50 hover:text-amber-600 hover:border-amber-200 transition-all shadow-sm"
-                                    title="查詢資產在此工單的狀態"
+                                    class="p-2 bg-white border border-slate-200 text-slate-500 rounded-lg hover:bg-amber-50 hover:text-amber-600 hover:border-amber-200 transition-all shadow-sm"
+                                    title="查詢此工單內的資產狀態"
                                 >
-                                    <Search class="w-3.5 h-3.5" />
-                                    <span>查詢資產</span>
+                                    <Search class="w-4 h-4" />
                                 </button>
                                 <button
                                     @click="exportWorkOrder(order)"
                                     :disabled="exportingOrderId === order.id"
-                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-300 text-slate-700 text-xs font-bold rounded-lg hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                    class="p-2 bg-white border border-slate-200 text-slate-500 rounded-lg hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                                     title="導出工單 Excel"
                                 >
-                                    <Loader2 v-if="exportingOrderId === order.id" class="w-3.5 h-3.5 animate-spin" />
-                                    <Download v-else class="w-3.5 h-3.5" />
-                                    <span>{{ exportingOrderId === order.id ? '導出中...' : '導出' }}</span>
+                                    <Loader2 v-if="exportingOrderId === order.id" class="w-4 h-4 animate-spin" />
+                                    <Download v-else class="w-4 h-4" />
                                 </button>
                                 <router-link 
                                     :to="{ name: 'InventoryWorkPage', params: { id: order.id } }"
-                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-300 text-slate-700 text-xs font-bold rounded-lg hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 transition-all shadow-sm"
+                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-300 text-slate-700 text-xs font-bold rounded-lg hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 transition-all shadow-sm whitespace-nowrap"
                                 >
                                     <ScanLine class="w-3.5 h-3.5" />
                                     進入盤點
@@ -256,7 +257,7 @@
                     <label class="label">目標保管人 <span class="text-rose-500">*</span></label>
                     <select v-model="newOrderForm.responsible_user_id" class="input-field appearance-none bg-white">
                         <option disabled value="">請選擇...</option>
-                        <option v-for="user in users" :key="user.id" :value="user.id">{{ user.name }}</option>
+                        <option v-for="user in users" :key="user.id" :value="user.id">{{ cleanText(user.name) }}</option>
                     </select>
                 </div>
 
@@ -287,7 +288,7 @@
                         <Search class="w-5 h-5 text-indigo-600" /> 查詢工單內資產狀態
                     </h3>
                     <p class="text-xs text-slate-500 mt-0.5">
-                        #{{ selectedOrderForCheck?.id.toString().padStart(6, '0') }} — {{ selectedOrderForCheck?.title }}
+                        #{{ selectedOrderForCheck?.id.toString().padStart(6, '0') }} — {{ formatOrderTitle(selectedOrderForCheck?.title) }}
                     </p>
                 </div>
                 <button @click="closeCheckAssetModal" class="text-slate-400 hover:text-slate-600"><X class="w-5 h-5" /></button>
@@ -351,7 +352,7 @@
                         </div>
                         <div class="flex justify-between">
                             <span class="text-slate-400">保管人</span>
-                            <span class="font-bold text-slate-700">{{ checkResult.asset.keeper }}</span>
+                            <span class="font-bold text-slate-700">{{ cleanText(checkResult.asset.keeper) }}</span>
                         </div>
                         <div class="flex justify-between">
                             <span class="text-slate-400">RFID 標籤</span>
@@ -365,10 +366,10 @@
                         </div>
                         <div v-if="checkResult.in_order && checkResult.inventory_status === '已盤'" class="pt-1.5 mt-1.5 border-t border-slate-100 flex justify-between text-emerald-700">
                             <span>盤點紀錄</span>
-                            <span class="font-bold">{{ checkResult.scanner_name || '系統' }} 於 {{ checkResult.scanned_at }}</span>
+                            <span class="font-bold">{{ cleanText(checkResult.scanner_name) || '系統' }} 於 {{ checkResult.scanned_at }}</span>
                         </div>
                         <div v-if="!checkResult.in_order" class="pt-1.5 mt-1.5 border-t border-slate-100 text-amber-700 font-medium">
-                            提示：系統中有此資產，但目前掛在「{{ checkResult.asset.keeper }}」名下，未列入本張工單。
+                            提示：系統中有此資產，但目前掛在「{{ cleanText(checkResult.asset.keeper) }}」名下，未列入本張工單。
                         </div>
                     </div>
 
@@ -417,6 +418,44 @@ const checkResult = ref(null);
 const checkAssetInputRef = ref(null);
 
 // --- Helper Functions ---
+
+// 移除括號內容，例如 "(常熟新世)" 或 "（常熟新世）"
+const cleanText = (str) => {
+    if (!str) return '';
+    return str.replace(/\s*[\(（][^\)）]*[\)）]/g, '').trim();
+};
+
+// 解析「英文帳號+中文姓名(廠區)」，拆為上行中文、下行英文
+const parseUserName = (rawName) => {
+    const cleaned = cleanText(rawName);
+    if (!cleaned) {
+        return { primary: '未設定', secondary: 'TE Dept.', avatar: '?' };
+    }
+    // 匹配「前面的英數底線 + 後面的中文字串」，例如 "Xiaoxing_Dai戴曉星"
+    const match = cleaned.match(/^([A-Za-z0-9_.\-\s]+?)\s*([\u4e00-\u9fa5].*)$/);
+    if (match) {
+        const enName = match[1].trim();
+        const zhName = match[2].trim();
+        return {
+            primary: zhName,
+            secondary: enName,
+            avatar: zhName.charAt(0)
+        };
+    }
+    return {
+        primary: cleaned,
+        secondary: 'TE Dept.',
+        avatar: cleaned.charAt(0).toUpperCase()
+    };
+};
+
+// 格式化工單標題：移除 (常熟新世) 並將「英文帳號+中文姓名」精簡為中文姓名
+const formatOrderTitle = (title) => {
+    if (!title) return '';
+    let cleaned = cleanText(title);
+    cleaned = cleaned.replace(/[A-Za-z0-9_.\-]+([\u4e00-\u9fa5]+)/g, '$1');
+    return cleaned.trim();
+};
 
 const isAnnualAudit = (title) => {
     return title && (title.includes('年度') || title.includes('年終') || title.includes('復盤'));
@@ -621,7 +660,7 @@ async function exportWorkOrder(order) {
         const link = document.createElement('a');
         link.href = url;
 
-        const safeTitle = (order.title || `work_order_${order.id}`).replace(/[\\/:*?"<>|]/g, '_');
+        const safeTitle = (formatOrderTitle(order.title) || `work_order_${order.id}`).replace(/[\\/:*?"<>|]/g, '_');
         link.setAttribute('download', `${safeTitle}.xlsx`);
         document.body.appendChild(link);
         link.click();
