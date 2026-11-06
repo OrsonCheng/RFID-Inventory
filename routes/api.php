@@ -55,6 +55,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('inventory/work-orders/{id}/revert-missing', [InventoryController::class, 'revertMissing']);
     //取得稽核日誌 (新增)
     Route::get('inventory/work-orders/{id}/logs', [InventoryController::class, 'logs']);
+    //導出盤點工單 Excel (新增)
+    Route::get('inventory/work-orders/{id}/export', [InventoryController::class, 'export']);
 	
 	
 	 // ★★★ 修改這段：獲取使用者資料時，順便載入角色與權限 ★★★

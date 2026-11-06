@@ -5,6 +5,9 @@ import vue from '@vitejs/plugin-vue';
 export default defineConfig({
 	// ⬇️ 新增這一行：指定子目錄路徑
     base: '/rfid-inventory/', 
+    server: {
+        host: '127.0.0.1',
+    },
 	
     plugins: [
         laravel({

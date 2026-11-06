@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Exports\WorkOrderExport;
 use App\Models\InventoryWorkOrder;
 use App\Models\InventoryWorkOrderItem;
 use App\Models\FixedAsset;
@@ -11,6 +12,7 @@ use App\Models\InventoryLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Routing\Controllers\HasMiddleware;
 use Illuminate\Routing\Controllers\Middleware;
 
@@ -276,5 +278,23 @@ class InventoryController extends Controller implements HasMiddleware
             ->get();
 
         return response()->json($logs);
+    }
+
+    //導出工單 Excel (兩個頁籤：未盤點 / 已盤點)
+    public function export($id)
+    {
+        $workOrder = InventoryWorkOrder::with([
+            'items.fixedAsset.responsibleUser',
+        ])->findOrFail($id);
+
+        $unscannedItems = $workOrder->items->where('status', '!=', '已盤')->values();
+        $scannedItems = $workOrder->items->where('status', '已盤')->values();
+
+        $fileName = 'work_order_' . str_pad($workOrder->id, 6, '0', STR_PAD_LEFT) . '_' . date('Ymd_His') . '.xlsx';
+
+        return Excel::download(
+            new WorkOrderExport($unscannedItems, $scannedItems),
+            $fileName
+        );
     }
 }

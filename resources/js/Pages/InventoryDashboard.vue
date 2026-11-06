@@ -193,13 +193,25 @@
 
                         <!-- 操作 -->
                         <td class="px-6 py-4 text-right">
-                            <router-link 
-                                :to="{ name: 'InventoryWorkPage', params: { id: order.id } }"
-                                class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-300 text-slate-700 text-xs font-bold rounded-lg hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 transition-all shadow-sm"
-                            >
-                                <ScanLine class="w-3.5 h-3.5" />
-                                進入盤點
-                            </router-link>
+                            <div class="inline-flex items-center justify-end gap-2">
+                                <button
+                                    @click="exportWorkOrder(order)"
+                                    :disabled="exportingOrderId === order.id"
+                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-300 text-slate-700 text-xs font-bold rounded-lg hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                    title="導出工單 Excel"
+                                >
+                                    <Loader2 v-if="exportingOrderId === order.id" class="w-3.5 h-3.5 animate-spin" />
+                                    <Download v-else class="w-3.5 h-3.5" />
+                                    <span>{{ exportingOrderId === order.id ? '導出中...' : '導出' }}</span>
+                                </button>
+                                <router-link 
+                                    :to="{ name: 'InventoryWorkPage', params: { id: order.id } }"
+                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-300 text-slate-700 text-xs font-bold rounded-lg hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 transition-all shadow-sm"
+                                >
+                                    <ScanLine class="w-3.5 h-3.5" />
+                                    進入盤點
+                                </router-link>
+                            </div>
                         </td>
                     </tr>
                 </tbody>
@@ -266,13 +278,14 @@ import axios from 'axios';
 import { useAuthStore } from '../stores/auth';
 import { 
     ClipboardCheck, PlusCircle, Search, Loader2, Inbox, Flag, CalendarClock, 
-    ScanLine, FilePlus, X 
+    ScanLine, FilePlus, X, Download 
 } from 'lucide-vue-next';
 
 const authStore = useAuthStore();
 const workOrders = ref([]);
 const users = ref([]);
 const loading = ref(false);
+const exportingOrderId = ref(null);
 const showCreateModal = ref(false);
 const searchQuery = ref('');
 const filterStatus = ref('全部'); 
@@ -413,6 +426,34 @@ async function createWorkOrder() {
         fetchWorkOrders();
     } catch (error) {
         alert(error.response?.data?.message || '生成失敗');
+    }
+}
+
+async function exportWorkOrder(order) {
+    exportingOrderId.value = order.id;
+    try {
+        const res = await axios.get(`/api/inventory/work-orders/${order.id}/export`, {
+            responseType: 'blob',
+        });
+
+        const blob = new Blob([res.data], {
+            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+
+        const safeTitle = (order.title || `work_order_${order.id}`).replace(/[\\/:*?"<>|]/g, '_');
+        link.setAttribute('download', `${safeTitle}.xlsx`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+    } catch (error) {
+        console.error(error);
+        alert('導出失敗，請稍後再試');
+    } finally {
+        exportingOrderId.value = null;
     }
 }
 
