@@ -195,6 +195,14 @@
                         <td class="px-6 py-4 text-right">
                             <div class="inline-flex items-center justify-end gap-2">
                                 <button
+                                    @click="openCheckAssetModal(order)"
+                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-300 text-slate-700 text-xs font-bold rounded-lg hover:bg-amber-50 hover:text-amber-600 hover:border-amber-200 transition-all shadow-sm"
+                                    title="查詢資產在此工單的狀態"
+                                >
+                                    <Search class="w-3.5 h-3.5" />
+                                    <span>查詢資產</span>
+                                </button>
+                                <button
                                     @click="exportWorkOrder(order)"
                                     :disabled="exportingOrderId === order.id"
                                     class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-300 text-slate-700 text-xs font-bold rounded-lg hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
@@ -269,16 +277,124 @@
         </div>
     </div>
 
+    <!-- 6. 查詢單筆資產狀態 Modal -->
+    <div v-if="showCheckAssetModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="closeCheckAssetModal"></div>
+        <div class="relative bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden transform transition-all">
+            <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                <div>
+                    <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                        <Search class="w-5 h-5 text-indigo-600" /> 查詢工單內資產狀態
+                    </h3>
+                    <p class="text-xs text-slate-500 mt-0.5">
+                        #{{ selectedOrderForCheck?.id.toString().padStart(6, '0') }} — {{ selectedOrderForCheck?.title }}
+                    </p>
+                </div>
+                <button @click="closeCheckAssetModal" class="text-slate-400 hover:text-slate-600"><X class="w-5 h-5" /></button>
+            </div>
+
+            <div class="p-6 space-y-5">
+                <!-- 輸入區 -->
+                <div>
+                    <label class="label">輸入固資編號</label>
+                    <div class="flex gap-2">
+                        <input
+                            ref="checkAssetInputRef"
+                            v-model="checkAssetTag"
+                            @keyup.enter="submitCheckAsset"
+                            type="text"
+                            class="input-field font-mono flex-1"
+                            placeholder="例如: F-2025001"
+                        />
+                        <button
+                            @click="submitCheckAsset"
+                            :disabled="checkingAsset || !checkAssetTag.trim()"
+                            class="px-4 py-2.5 bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-1.5 shrink-0"
+                        >
+                            <Loader2 v-if="checkingAsset" class="w-4 h-4 animate-spin" />
+                            <Search v-else class="w-4 h-4" />
+                            <span>查詢</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 查詢結果顯示區 -->
+                <div v-if="checkResult" class="rounded-xl border p-4 space-y-3 transition-all" :class="checkResultCardClass">
+                    <!-- 狀態標題列 -->
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2 font-black text-base">
+                            <CheckCircle2 v-if="checkResult.in_order && checkResult.inventory_status === '已盤'" class="w-5 h-5 text-emerald-600" />
+                            <Clock v-else-if="checkResult.in_order && checkResult.inventory_status === '未盤'" class="w-5 h-5 text-amber-600" />
+                            <AlertTriangle v-else-if="checkResult.in_order && checkResult.inventory_status === '盤虧'" class="w-5 h-5 text-rose-600" />
+                            <HelpCircle v-else class="w-5 h-5 text-slate-500" />
+
+                            <span v-if="checkResult.in_order && checkResult.inventory_status === '已盤'" class="text-emerald-800">已盤點</span>
+                            <span v-else-if="checkResult.in_order && checkResult.inventory_status === '未盤'" class="text-amber-800">未盤點</span>
+                            <span v-else-if="checkResult.in_order && checkResult.inventory_status === '盤虧'" class="text-rose-800">已報盤虧</span>
+                            <span v-else class="text-slate-700">不在本盤點工單中</span>
+                        </div>
+                        <span v-if="checkResult.asset?.asset_tag || checkResult.asset_tag" class="text-xs font-mono px-2 py-0.5 bg-white/80 rounded border border-slate-200 text-slate-600">
+                            {{ checkResult.asset?.asset_tag || checkResult.asset_tag }}
+                        </span>
+                    </div>
+
+                    <!-- 盤虧原因獨立提示 -->
+                    <div v-if="checkResult.in_order && checkResult.inventory_status === '盤虧'" class="p-3 bg-white/90 rounded-lg border border-rose-200 text-xs text-rose-700">
+                        <span class="font-bold">盤虧原因：</span>{{ checkResult.note || '未填寫原因' }}
+                    </div>
+
+                    <!-- 若系統中有此資產，顯示資產基本資訊 -->
+                    <div v-if="checkResult.asset_exists && checkResult.asset" class="bg-white/80 rounded-lg p-3 text-xs space-y-1.5 border border-black/5 text-slate-600">
+                        <div class="flex justify-between">
+                            <span class="text-slate-400">設備名稱</span>
+                            <span class="font-bold text-slate-800">{{ checkResult.asset.name }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-slate-400">保管人</span>
+                            <span class="font-bold text-slate-700">{{ checkResult.asset.keeper }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-slate-400">RFID 標籤</span>
+                            <span class="font-mono text-slate-700">{{ checkResult.asset.rfid_tag || '未綁定' }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-slate-400">存放位置</span>
+                            <span class="text-slate-700">
+                                {{ [checkResult.asset.factory_area, checkResult.asset.floor, checkResult.asset.area, checkResult.asset.location].filter(Boolean).join(' / ') || '未設定' }}
+                            </span>
+                        </div>
+                        <div v-if="checkResult.in_order && checkResult.inventory_status === '已盤'" class="pt-1.5 mt-1.5 border-t border-slate-100 flex justify-between text-emerald-700">
+                            <span>盤點紀錄</span>
+                            <span class="font-bold">{{ checkResult.scanner_name || '系統' }} 於 {{ checkResult.scanned_at }}</span>
+                        </div>
+                        <div v-if="!checkResult.in_order" class="pt-1.5 mt-1.5 border-t border-slate-100 text-amber-700 font-medium">
+                            提示：系統中有此資產，但目前掛在「{{ checkResult.asset.keeper }}」名下，未列入本張工單。
+                        </div>
+                    </div>
+
+                    <!-- 系統查無此資產編號 -->
+                    <div v-else class="text-xs text-slate-500 bg-white/80 rounded-lg p-3 border border-slate-200">
+                        系統資產庫中查無固資編號「<span class="font-mono font-bold text-slate-700">{{ checkResult.asset_tag }}</span>」，請確認輸入是否正確。
+                    </div>
+                </div>
+            </div>
+
+            <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end">
+                <button @click="closeCheckAssetModal" class="btn-secondary">關閉</button>
+            </div>
+        </div>
+    </div>
+
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, reactive, computed } from 'vue';
+import { ref, onMounted, reactive, computed, nextTick } from 'vue';
 import axios from 'axios';
 import { useAuthStore } from '../stores/auth';
 import { 
     ClipboardCheck, PlusCircle, Search, Loader2, Inbox, Flag, CalendarClock, 
-    ScanLine, FilePlus, X, Download 
+    ScanLine, FilePlus, X, Download, CheckCircle2, Clock, AlertTriangle, HelpCircle 
 } from 'lucide-vue-next';
 
 const authStore = useAuthStore();
@@ -291,6 +407,14 @@ const searchQuery = ref('');
 const filterStatus = ref('全部'); 
 const orderType = ref('monthly'); // 預設月度
 const newOrderForm = reactive({ responsible_user_id: '', category: '' });
+
+// 單筆資產查詢 Modal 狀態
+const showCheckAssetModal = ref(false);
+const selectedOrderForCheck = ref(null);
+const checkAssetTag = ref('');
+const checkingAsset = ref(false);
+const checkResult = ref(null);
+const checkAssetInputRef = ref(null);
 
 // --- Helper Functions ---
 
@@ -388,7 +512,61 @@ const stats = computed(() => {
     };
 });
 
+const checkResultCardClass = computed(() => {
+    if (!checkResult.value) return '';
+    if (!checkResult.value.in_order) {
+        return 'bg-slate-50 border-slate-200';
+    }
+    switch (checkResult.value.inventory_status) {
+        case '已盤':
+            return 'bg-emerald-50 border-emerald-200';
+        case '未盤':
+            return 'bg-amber-50 border-amber-200';
+        case '盤虧':
+            return 'bg-rose-50 border-rose-200';
+        default:
+            return 'bg-slate-50 border-slate-200';
+    }
+});
+
 // --- API Actions ---
+
+function openCheckAssetModal(order) {
+    selectedOrderForCheck.value = order;
+    checkAssetTag.value = '';
+    checkResult.value = null;
+    showCheckAssetModal.value = true;
+    nextTick(() => {
+        checkAssetInputRef.value?.focus();
+    });
+}
+
+function closeCheckAssetModal() {
+    showCheckAssetModal.value = false;
+    selectedOrderForCheck.value = null;
+    checkAssetTag.value = '';
+    checkResult.value = null;
+}
+
+async function submitCheckAsset() {
+    const tag = checkAssetTag.value.trim();
+    if (!tag || !selectedOrderForCheck.value) return;
+
+    checkingAsset.value = true;
+    try {
+        const res = await axios.get(`/api/inventory/work-orders/${selectedOrderForCheck.value.id}/check-asset`, {
+            params: { asset_tag: tag }
+        });
+        checkResult.value = res.data;
+    } catch (error) {
+        alert(error.response?.data?.message || '查詢失敗，請稍後再試');
+    } finally {
+        checkingAsset.value = false;
+        nextTick(() => {
+            checkAssetInputRef.value?.select();
+        });
+    }
+}
 
 async function fetchWorkOrders() {
     loading.value = true;

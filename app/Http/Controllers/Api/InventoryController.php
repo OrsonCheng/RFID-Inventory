@@ -297,4 +297,66 @@ class InventoryController extends Controller implements HasMiddleware
             $fileName
         );
     }
+
+    //查詢單筆資產在此工單中的盤點狀態
+    public function checkAsset(Request $request, $id)
+    {
+        $request->validate([
+            'asset_tag' => 'required|string',
+        ]);
+
+        $assetTag = trim($request->query('asset_tag', ''));
+        $workOrder = InventoryWorkOrder::findOrFail($id);
+
+        $asset = FixedAsset::with('responsibleUser')
+            ->where('asset_tag', $assetTag)
+            ->first();
+
+        if (!$asset) {
+            return response()->json([
+                'in_order' => false,
+                'asset_exists' => false,
+                'asset_tag' => $assetTag,
+                'message' => '不在本盤點工單中（系統查無此固資編號）',
+            ]);
+        }
+
+        $item = $workOrder->items()
+            ->with(['scanner:id,name'])
+            ->where('fixed_asset_id', $asset->id)
+            ->first();
+
+        $assetData = [
+            'id' => $asset->id,
+            'asset_tag' => $asset->asset_tag,
+            'name' => $asset->name,
+            'rfid_tag' => $asset->rfid_tag,
+            'status' => $asset->status,
+            'keeper' => $asset->responsibleUser?->name ?? $asset->keeper ?? '未分配',
+            'factory_area' => $asset->factory_area,
+            'floor' => $asset->floor,
+            'area' => $asset->area,
+            'location' => $asset->location,
+        ];
+
+        if (!$item) {
+            return response()->json([
+                'in_order' => false,
+                'asset_exists' => true,
+                'asset_tag' => $asset->asset_tag,
+                'asset' => $assetData,
+                'message' => '不在本盤點工單中',
+            ]);
+        }
+
+        return response()->json([
+            'in_order' => true,
+            'asset_exists' => true,
+            'inventory_status' => $item->status, // '已盤' | '未盤' | '盤虧'
+            'scanned_at' => $item->scanned_at?->format('Y-m-d H:i:s'),
+            'scanner_name' => $item->scanner?->name,
+            'note' => $item->note,
+            'asset' => $assetData,
+        ]);
+    }
 }

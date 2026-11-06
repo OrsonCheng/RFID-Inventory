@@ -57,6 +57,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('inventory/work-orders/{id}/logs', [InventoryController::class, 'logs']);
     //導出盤點工單 Excel (新增)
     Route::get('inventory/work-orders/{id}/export', [InventoryController::class, 'export']);
+    //查詢單筆資產在此工單中的盤點狀態 (新增)
+    Route::get('inventory/work-orders/{id}/check-asset', [InventoryController::class, 'checkAsset']);
 	
 	
 	 // ★★★ 修改這段：獲取使用者資料時，順便載入角色與權限 ★★★
