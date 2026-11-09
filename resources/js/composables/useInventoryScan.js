@@ -235,6 +235,24 @@ export function useInventoryScan(workOrderId, orderRef, isOnlineRef, pendingSync
         scanInput.value?.focus();
     };
 
+    // ★ 新增：供 USB 離線批次匯入直接推進佇列並立即送出核對
+    const enqueueBatchTags = async (tagsArray) => {
+        if (!Array.isArray(tagsArray) || tagsArray.length === 0) return;
+        const cleaned = tagsArray
+            .map(t => String(t || '').trim().toUpperCase())
+            .filter(Boolean);
+        if (cleaned.length === 0) return;
+
+        if (batchTimer.value) {
+            clearTimeout(batchTimer.value);
+            batchTimer.value = null;
+        }
+        scanQueue.value.push(...cleaned);
+        if (!isProcessing.value) {
+            await processBatchQueue();
+        }
+    };
+
     return {
         scanInput,
         displayValue,
@@ -245,6 +263,7 @@ export function useInventoryScan(workOrderId, orderRef, isOnlineRef, pendingSync
         msgType,
         scannedAssetInfo,
         handleKeydown,
-        focusInput
+        focusInput,
+        enqueueBatchTags
     };
 }

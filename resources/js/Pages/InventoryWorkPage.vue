@@ -92,6 +92,7 @@
                     :queue-count="scanState.scanQueue.length"
                     :is-online="isOnline"
                     @keydown="handleKeydown"
+                    @batch-import="enqueueBatchTags"
                 />
                 
                 <!-- 檢視模式的返回卡片 -->
@@ -218,7 +219,7 @@ const inventoryScanRaw = useInventoryScan(props.id, order, isOnline, pendingSync
 const scanState = reactive(inventoryScanRaw);
 
 // 獨立解構出函數，因為函數不需要 reactive 包裹
-const { handleKeydown } = inventoryScanRaw;
+const { handleKeydown, enqueueBatchTags } = inventoryScanRaw;
 
 // 3. Computed Properties
 const scannedCount = computed(() => order.value?.items.filter(i => i.status !== '未盤').length || 0);
