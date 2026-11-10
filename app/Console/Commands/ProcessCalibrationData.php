@@ -207,6 +207,8 @@ class ProcessCalibrationData extends Command
                 'Next_Calibration_Date' => $formattedNextDate ?? null,
                 'Calibration_Csv_Md5' => $sessionData['CalibrationCsvMd5'] ?? null,
                 'Final_Result' => $sessionData['FinalStatus'] ?? null,
+                'Temperature' => (isset($sessionData['Temperature']) && $sessionData['Temperature'] !== '') ? $sessionData['Temperature'] : null,
+                'Humidity' => (isset($sessionData['Humidity']) && $sessionData['Humidity'] !== '') ? $sessionData['Humidity'] : null,
             ]);
 
             // [B1] 準備 Detail 陣列 (VerifyData)
