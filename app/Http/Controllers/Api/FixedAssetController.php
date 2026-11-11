@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\FixedAsset;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Validator;
 // ▼▼▼ 1. 引入 Laravel 11 新版 Middleware 介面 ▼▼▼
 use Illuminate\Routing\Controllers\HasMiddleware;
@@ -124,6 +125,13 @@ class FixedAssetController extends Controller implements HasMiddleware
         }
 
         $asset = FixedAsset::create($request->all());
+
+        // 做法 A：單筆新增資產時，若未指定 rfid_tag，立即同步執行生成命令並回傳最新資料
+        if (empty($asset->rfid_tag)) {
+            Artisan::call('asset:generate-rfid');
+            $asset->refresh();
+        }
+
         return response()->json($asset->load('responsibleUser'), 201);
     }
 
